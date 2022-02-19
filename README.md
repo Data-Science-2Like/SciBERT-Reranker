@@ -35,3 +35,11 @@ Further we expect the data to be in blocks of same queries and that the single p
 We also assume that there is the same amount of entries in the data for each query / block.  
 This allows us to easily iterate over blocks and treat each block as a possible batch, where we take the first entry (the positive document)
 and sample randomly from the other entries in the block (the negative documents) until the aimed batch size is reached.
+
+### Dataset Creation
+Allows to create a dataset with the above described format from the following base data:
+- ACL-200 or ACL-600 respectively as provided in [Improved Local Citation Recommendation Based on Context Enhanced with Global Information](https://aclanthology.org/2020.sdp-1.11/)  
+    &rarr; `create_dataset_from_acl` method
+
+The resulting files are output in the `dataset` directory.  
+There is no commandline interface provided. Please, add the respective method call with its parameters directly in the `run.py` file.
