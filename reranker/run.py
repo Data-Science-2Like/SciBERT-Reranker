@@ -4,9 +4,9 @@ import time
 import pandas as pd
 from simpletransformers.classification import ClassificationModel
 
-from reranker.data_loading import CitationBatchSampler
-from reranker.metrics import MeanReciprocalRank, MeanRecallAtK
-from reranker.triplet_loss import TripletLoss
+from data_loading import CitationBatchSampler
+from metrics import MeanReciprocalRank, MeanRecallAtK
+from triplet_loss import TripletLoss
 
 
 def train_and_evaluate_SciBERT_Reranker(train_df, documents_per_query, val_df=None, test_df=None,

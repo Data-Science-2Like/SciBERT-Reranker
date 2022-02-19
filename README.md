@@ -15,7 +15,7 @@ The abstract is not going to be used in the query as we are recommending citatio
 - the abstract might not yet exist.
 - it might be confusing when the recommended citations in the text change only due to some change in the abstract.
 
-The candidate paper is represented by its title and abstract as in the original work.
+The candidate paper is represented by its title and abstract as in the original work. We might experiment with adding the year of publication.
 
 ## Installation
 Create a python3.8 environment with all required libraries. Using Anaconda:
@@ -24,7 +24,8 @@ Create a python3.8 environment with all required libraries. Using Anaconda:
 Install the simpletransformers library via our github organisation (it only contains slight changes for allowing
 a custom loss function and a custom batch sampler in the ClassificationModel, which is not possible in the official library implementation).
 - `git clone https://github.com/Data-Science-2Like/simpletransformers.git`  
-- `pip install simpletransformers`
+- `cd simpletransformers` (just to be on the save side that we install custom and not official version)
+- `pip install .`
 
 ## Data Format
 We expect the input data to have the same format as in the [simpletransformers library](https://simpletransformers.ai/docs/sentence-pair-classification/) for a sentence-pair classification task,
