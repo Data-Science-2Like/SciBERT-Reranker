@@ -45,15 +45,14 @@ def _create_top_candidates_per_query(data, prefetcher, documents_per_query):
 
 def create_dataset_from_acl(path_to_contexts, path_to_papers, path_to_train, path_to_val, path_to_test,
                             documents_per_query=2000, query_fields=("citation_context", "title", "abstract"),
-                            use_saved_top_candidates_per_query=False):
-    data = DataACL(path_to_contexts, path_to_papers)
+                            use_saved_top_candidates_per_query=False, marker_surrounding_characters=200):
+    data = DataACL(path_to_contexts, path_to_papers, marker_surrounding_characters)
     if use_saved_top_candidates_per_query:
         print("loading top_candidates_per_query from file: ../dataset/acl_top_candidates_per_query.joblib")
         top_candidates_per_query = joblib.load('../dataset/acl_top_candidates_per_query.joblib')
     else:
         prefetcher = PrefetcherBM25(data.get_corpus())
         top_candidates_per_query = _create_top_candidates_per_query(data, prefetcher, documents_per_query)
-
 
     def extract_context_ids(path_to):
         data = _Data.load_data_from_json(path_to)
