@@ -6,21 +6,23 @@ from corpus_and_queries import DataACL, _Data
 from prefetcher import PrefetcherBM25
 
 
-def _create_csv(data, context_ids, top_candidates_per_query, path_to_csv, query_fields):
-    with open(path_to_csv, 'w', newline='', encoding='utf-8') as dataset:
-        writer = csv.writer(dataset)
+def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_fields):
+    with open(path_to_tsv, 'w', newline='', encoding='utf-8') as dataset:
+        writer = csv.writer(dataset, delimiter='\t')
         writer.writerow(["Query", "Document", "Relevant"])
         for context_id in context_ids:
             query_entry = ""
             context = data.get_context(context_id)
             for field in query_fields:
                 query_entry += context[field] + " "
+            query_entry = query_entry.replace("\n", " ")
             relevant_id = context["cited_id"]
 
             candidate_paper_ids = top_candidates_per_query[context_id]
             for candidate_paper_id in candidate_paper_ids:
                 paper = data.get_paper(candidate_paper_id)
                 document_entry = paper["title"] + " " + paper["abstract"]
+                document_entry = document_entry.replace("\n", " ")
                 relevant_entry = int(candidate_paper_id == relevant_id)
                 writer.writerow([query_entry, document_entry, relevant_entry])
 
@@ -68,9 +70,9 @@ def create_dataset_from_acl(path_to_contexts, path_to_papers, path_to_train, pat
     test_context_ids = extract_context_ids(path_to_test)
     print("context ids for test set available")
 
-    _create_csv(data, train_context_ids, top_candidates_per_query, '../dataset/acl_train_dataset.csv', query_fields)
-    _create_csv(data, val_context_ids, top_candidates_per_query, '../dataset/acl_val_dataset.csv', query_fields)
-    _create_csv(data, test_context_ids, top_candidates_per_query, '../dataset/acl_test_dataset.csv', query_fields)
+    _create_tsv(data, train_context_ids, top_candidates_per_query, '../dataset/acl_train_dataset.tsv', query_fields)
+    _create_tsv(data, val_context_ids, top_candidates_per_query, '../dataset/acl_val_dataset.tsv', query_fields)
+    _create_tsv(data, test_context_ids, top_candidates_per_query, '../dataset/acl_test_dataset.tsv', query_fields)
 
 
 if __name__ == "__main__":
