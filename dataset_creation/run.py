@@ -16,15 +16,22 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
             for field in query_fields:
                 query_entry += context[field] + " "
             query_entry = query_entry.replace("\n", " ")
+
+            # add entry for relevant paper
             relevant_id = context["cited_id"]
+            relevant_paper = data.get_paper(relevant_id)
+            relevant_document_entry = relevant_paper["title"] + " " + relevant_paper["abstract"]
+            relevant_document_entry = relevant_document_entry.replace("\n", " ")
+            writer.writerow([query_entry, relevant_document_entry, 1])
 
             candidate_paper_ids = top_candidates_per_query[context_id]
+            candidate_paper_ids.remove(relevant_id)
+            # add entries for non-relevant papers
             for candidate_paper_id in candidate_paper_ids:
                 paper = data.get_paper(candidate_paper_id)
                 document_entry = paper["title"] + " " + paper["abstract"]
                 document_entry = document_entry.replace("\n", " ")
-                relevant_entry = int(candidate_paper_id == relevant_id)
-                writer.writerow([query_entry, document_entry, relevant_entry])
+                writer.writerow([query_entry, document_entry, 0])
 
 
 def _create_top_candidates_per_query(data, prefetcher, documents_per_query):
