@@ -1,6 +1,8 @@
+import linecache
 import random
 from typing import Iterator, List, Sized
 
+from simpletransformers.classification.classification_utils import ClassificationDataset, LazyClassificationDataset
 from torch.utils.data import Sampler
 
 
@@ -32,6 +34,41 @@ class CitationBatchSampler(Sampler[List[int]]):
                              "by the given documents_per_query={}".format(len(data_source), self.documents_per_query))
         self.queries_in_data_source = len(self.data_source) // self.documents_per_query
 
+        if isinstance(self.data_source, LazyClassificationDataset):
+            query_idx_list = list(range(0, len(self.data_source), self.documents_per_query))
+            for line_idx in range(self.data_source.num_entries):
+                line = (
+                    linecache.getline(self.data_source.data_file, line_idx + 1 + self.data_source.start_row)
+                        .rstrip("\n")
+                        .split(self.data_source.delimiter)
+                )
+                if len(line) != 3:
+                    raise ValueError("data_source should have three items per entry: Query, Document and Relevant. "
+                                     "But got {} items for entry number {}"
+                                     .format(len(line), line_idx + 1 + self.data_source.start_row))
+                label = int(line[self.data_source.labels_column])
+                if label != 0 and label != 1:
+                    raise ValueError(
+                        "data_source should contain labels / relevant entries that are either 0 or 1. "
+                        "But got label = {}".format(label)
+                    )
+                if (label == 1 and line_idx not in query_idx_list) or (label == 0 and line_idx in query_idx_list):
+                    raise ValueError(
+                        "data_source should contain n queries with each having 'documents_per_query' documents, "
+                        "where the first document is the single positive document with label 1 "
+                        "and all other documents are negative ones with label 0")
+        elif isinstance(self.data_source, ClassificationDataset):
+            query_idx_list = list(range(0, len(self.data_source), self.documents_per_query))
+            for query_idx in query_idx_list:
+                _, labels = self.data_source[query_idx:query_idx + self.documents_per_query]
+                if labels[0] != 1 or sum(labels) != 1:
+                    raise ValueError(
+                        "data_source should contain n queries with each having 'documents_per_query' documents, "
+                        "where the first document is the single positive document with label 1 "
+                        "and all other documents are negative ones with label 0")
+        else:
+            print("Datasource could not be checked for correct label structure.")
+
     def __iter__(self) -> Iterator[List[int]]:
         if self.data_source is None:
             raise ValueError("no data_source available, set it via set_data_source method first")
@@ -39,12 +76,6 @@ class CitationBatchSampler(Sampler[List[int]]):
         random.shuffle(query_idx_list)  # random order of query batches
         for query_idx in query_idx_list:
             batch = []
-            _, labels = self.data_source[query_idx:query_idx + self.documents_per_query]
-            if labels[0] != 1 or sum(labels) != 1:
-                raise ValueError(
-                    "data_source should contain n queries with each having 'documents_per_query' documents, "
-                    "where the first document is the single positive document with label 1 "
-                    "and all other documents are negative ones with label 0")
             batch.append(query_idx)  # this is the pairing of the query with the positive document
             negative_doc_idx_list = range(query_idx + 1, query_idx + self.documents_per_query)
             batch += random.sample(negative_doc_idx_list, self.batch_size - 1)
