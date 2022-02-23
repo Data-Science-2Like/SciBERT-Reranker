@@ -4,12 +4,12 @@ import time
 import pandas as pd
 from simpletransformers.classification import ClassificationModel
 
-from data_loading import CitationBatchSampler
+from data_loading import CitationBatchSampler, LargeLazyClassificationDataset
 from metrics import MeanReciprocalRank, MeanRecallAtK
 from triplet_loss import TripletLoss
 
 
-def train_and_evaluate_SciBERT_Reranker(train_data, use_lazy_loading, documents_per_query, val_data=None, test_data=None,
+def train_and_evaluate_SciBERT_Reranker(train_data, documents_per_query, val_data=None, test_data=None,
                                         exp_name: str = 'unknown_experiment', use_cased=False):
     """
     fine-tunes SciBERT for Local Citation Recommendation and evaluates resulting model
@@ -17,30 +17,10 @@ def train_and_evaluate_SciBERT_Reranker(train_data, use_lazy_loading, documents_
         train_data: train data tsv file with columns 'Query', 'Document', 'Relevant'
         val_data: validation data tsv file with columns 'Query', 'Document', 'Relevant'
         test_data: test data with tsv file columns 'Query', 'Document', 'Relevant'
-        use_lazy_loading: whether to use lazy loading for the datasets
         documents_per_query: tells how many documents per query are in the dataframes
         exp_name: name of the experiment to be included in the output directory
         use_cased: whether to use the cased version of SciBERT instead of the uncased
     """
-
-    if use_lazy_loading:
-        train_d = train_data
-        val_d = val_data
-        test_d = test_data
-    else:
-        # load data into dataframes and rename columns
-        train_d = pd.read_csv(train_data, sep='\t')
-        train_d = train_d.rename(columns={'Query': 'text_a', 'Document': 'text_b', 'Relevant': 'labels'}).dropna()
-
-        val_d = None
-        if args.validation_data is not None:
-            val_d = pd.read_csv(val_data, sep='\t')
-            val_d = val_d.rename(columns={'Query': 'text_a', 'Document': 'text_b', 'Relevant': 'labels'}).dropna()
-
-        test_d = None
-        if args.test_data is not None:
-            test_d = pd.read_csv(test_data, sep='\t')
-            test_d = test_d.rename(columns={'Query': 'text_a', 'Document': 'text_b', 'Relevant': 'labels'}).dropna()
 
     # config options
     reranker_args = {
@@ -67,7 +47,7 @@ def train_and_evaluate_SciBERT_Reranker(train_data, use_lazy_loading, documents_
         # "scheduler": "linear_schedule_with_warmup"
 
         "eval_batch_size": 63,  # according to paper
-        "evaluate_during_training": val_d is not None,
+        "evaluate_during_training": val_data is not None,
         # "evaluate_during_training_silent": True,
         # "evaluate_during_training_steps": 2000,
         # "evaluate_during_training_verbose": False,
@@ -80,7 +60,7 @@ def train_and_evaluate_SciBERT_Reranker(train_data, use_lazy_loading, documents_
         "wandb_kwargs": {"mode": "offline"},
         "wandb_project": "SciBERT_Reranker",
 
-        "lazy_loading": use_lazy_loading,
+        "lazy_loading": True,
         "lazy_delimiter": "\t",
         "lazy_text_a_column": 0,
         "lazy_text_b_column": 1,
@@ -96,17 +76,19 @@ def train_and_evaluate_SciBERT_Reranker(train_data, use_lazy_loading, documents_
                                 args=reranker_args, loss_fct=TripletLoss(m=0.1))
 
     # train model
-    model.train_model(train_d, eval_df=val_d,
+    model.train_model(train_data, eval_df=val_data,
                       batch_sampler=CitationBatchSampler(batch_size=reranker_args["train_batch_size"],
                                                          documents_per_query=documents_per_query),
+                      DatasetClass=LargeLazyClassificationDataset,
                       prob_mrr=MeanReciprocalRank(reranker_args["eval_batch_size"]),
                       prob_r_at_k=MeanRecallAtK(reranker_args["eval_batch_size"], k=10)
                       )
-    if test_d is not None:
+    if test_data is not None:
         # evaluate model
-        model.eval_model(test_d,
+        model.eval_model(test_data,
                          batch_sampler=CitationBatchSampler(batch_size=reranker_args["eval_batch_size"],
                                                             documents_per_query=documents_per_query),
+                         DatasetClass=LargeLazyClassificationDataset,
                          prob_mrr=MeanReciprocalRank(reranker_args["eval_batch_size"]),
                          prob_r_at_k=MeanRecallAtK(reranker_args["eval_batch_size"], k=10)
                          )
@@ -122,11 +104,11 @@ if __name__ == "__main__":
     parser.add_argument("--test_data", help="Location of the created test data tsv file.", default=None, type=str)
     parser.add_argument("--exp_name", help="Name of the experiment (used in output directory).",
                         default='unknown_experiment', type=str)
-    parser.add_argument("--use_cased", help="Whether to use the cased model variant.", action='store_true', default=False)
-    parser.add_argument("--use_lazy_loading", help="Whether to use lazy loading for the dataset.", action='store_true', default=False)
+    parser.add_argument("--use_cased", help="Whether to use the cased model variant.", action='store_true',
+                        default=False)
     args = parser.parse_args()
 
     # train and evaluate model
     train_and_evaluate_SciBERT_Reranker(args.train_data, val_data=args.validation_data, test_data=args.test_data,
-                                        use_lazy_loading=args.use_lazy_loading, documents_per_query=args.documents_per_query,
+                                        documents_per_query=args.documents_per_query,
                                         use_cased=args.use_cased, exp_name=args.exp_name)
