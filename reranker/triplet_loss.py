@@ -61,7 +61,7 @@ class TripletLoss(torch.nn.Module):
         negative_scores = torch.cat([input_score[:positive_idx], input_score[positive_idx + 1:]])
 
         # compute loss
-        loss = positive_score - negative_scores + self.m
+        loss = negative_scores - positive_score + self.m
         loss[loss < 0] = 0  # maximum operation: max[loss, 0]
 
         return torch.mean(loss)
