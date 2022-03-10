@@ -1,7 +1,6 @@
 import argparse
 import time
 
-import pandas as pd
 from simpletransformers.classification import ClassificationModel
 
 from data_loading import CitationBatchSampler, LargeLazyClassificationDataset
@@ -31,14 +30,15 @@ def train_and_evaluate_SciBERT_Reranker(train_data, documents_per_query, val_dat
         # "save_eval_checkpoints": True,
         # "save_model_every_epoch": True,
         # "save_optimizer_and_scheduler": True,
-        # "save_steps": 2000,
+        "save_steps": -1,  # with this we do not save during the epoch but only at the end of it
 
         "cache_dir": "cache/",
         # "reprocess_input_data": True,
         # "use_cached_eval_features": False,
 
         "num_train_epochs": 5,  # todo figure out value (we evaluate at every epoch during training)
-        "train_batch_size": 63,  # according to paper
+        "train_batch_size": 32,  # according to paper
+        "gradient_accumulation_steps": 2,  # according to paper
         "learning_rate": 1e-5,  # according to paper
         # "optimizer": "AdamW"
         # "adam_epsilon": 1e-8,
@@ -46,10 +46,10 @@ def train_and_evaluate_SciBERT_Reranker(train_data, documents_per_query, val_dat
         "weight_decay": 1e-2,  # according to paper
         # "scheduler": "linear_schedule_with_warmup"
 
-        "eval_batch_size": 63,  # according to paper
+        "eval_batch_size": 50,
         "evaluate_during_training": val_data is not None,
         # "evaluate_during_training_silent": True,
-        # "evaluate_during_training_steps": 2000,
+        "evaluate_during_training_steps": -1,  # with this we do not evaluate during the epoch but only at the end of it
         # "evaluate_during_training_verbose": False,
         # "evaluate_each_epoch": True,
 
@@ -77,20 +77,20 @@ def train_and_evaluate_SciBERT_Reranker(train_data, documents_per_query, val_dat
 
     # train model
     model.train_model(train_data, eval_df=val_data,
-                      batch_sampler=CitationBatchSampler(batch_size=reranker_args["train_batch_size"],
-                                                         documents_per_query=documents_per_query),
+                      train_batch_sampler=CitationBatchSampler(batch_size=reranker_args["train_batch_size"],
+                                                               gradient_accumulation_steps=reranker_args[
+                                                                   "gradient_accumulation_steps"],
+                                                               documents_per_query=documents_per_query),
                       DatasetClass=LargeLazyClassificationDataset,
-                      prob_mrr=MeanReciprocalRank(reranker_args["eval_batch_size"]),
-                      prob_r_at_k=MeanRecallAtK(reranker_args["eval_batch_size"], k=10)
+                      prob_mrr=MeanReciprocalRank(documents_per_query),
+                      prob_r_at_k=MeanRecallAtK(documents_per_query, k=10)
                       )
     if test_data is not None:
         # evaluate model
         model.eval_model(test_data,
-                         batch_sampler=CitationBatchSampler(batch_size=reranker_args["eval_batch_size"],
-                                                            documents_per_query=documents_per_query),
                          DatasetClass=LargeLazyClassificationDataset,
-                         prob_mrr=MeanReciprocalRank(reranker_args["eval_batch_size"]),
-                         prob_r_at_k=MeanRecallAtK(reranker_args["eval_batch_size"], k=10)
+                         prob_mrr=MeanReciprocalRank(documents_per_query),
+                         prob_r_at_k=MeanRecallAtK(documents_per_query, k=10)
                          )
 
 

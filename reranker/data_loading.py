@@ -10,13 +10,19 @@ from torch.utils.data import Sampler, Dataset
 
 class CitationBatchSampler(Sampler[List[int]]):
 
-    def __init__(self, batch_size: int, documents_per_query: int):
+    def __init__(self, batch_size: int, gradient_accumulation_steps: int, documents_per_query: int):
         # documents_per_query were 2000 in the paper
         if not isinstance(batch_size, int) or isinstance(batch_size, bool) or \
                 batch_size <= 0:
             raise ValueError("batch_size should be a positive integer value, "
                              "but got batch_size={}".format(batch_size))
         self.batch_size = batch_size
+
+        if not isinstance(gradient_accumulation_steps, int) or isinstance(gradient_accumulation_steps, bool) or \
+                gradient_accumulation_steps <= 0:
+            raise ValueError("gradient_accumulation_steps should be a positive integer value, "
+                             "but got gradient_accumulation_steps={}".format(gradient_accumulation_steps))
+        self.gradient_accumulation_steps = gradient_accumulation_steps
 
         if not isinstance(documents_per_query, int) or isinstance(documents_per_query, bool) or \
                 documents_per_query <= 0:
@@ -39,7 +45,8 @@ class CitationBatchSampler(Sampler[List[int]]):
         query_idx_list = list(range(0, len(self.data_source), self.documents_per_query))
         if isinstance(self.data_source, LargeLazyClassificationDataset):
             for query_idx in query_idx_list:
-                labels = self.data_source.data_frame.loc[query_idx:query_idx + self.documents_per_query - 1, self.data_source.labels_column]
+                labels = self.data_source.data_frame.loc[query_idx:query_idx + self.documents_per_query - 1,
+                         self.data_source.labels_column]
                 if labels[query_idx] != 1 or sum(labels) != 1:
                     raise ValueError(
                         "data_source should contain n queries with each having 'documents_per_query' documents, "
@@ -84,15 +91,18 @@ class CitationBatchSampler(Sampler[List[int]]):
         query_idx_list = list(range(0, len(self.data_source), self.documents_per_query))
         random.shuffle(query_idx_list)  # random order of query batches
         for query_idx in query_idx_list:
-            batch = []
-            batch.append(query_idx)  # this is the pairing of the query with the positive document
+            pos_doc = query_idx  # this is the pairing of the query with the positive document
             negative_doc_idx_list = range(query_idx + 1, query_idx + self.documents_per_query)
-            batch += random.sample(negative_doc_idx_list, self.batch_size - 1)
-            random.shuffle(batch)  # random order of relevant document in batch
-            yield batch
+            num_neg_docs_per_batch = self.batch_size - 1
+            neg_docs = random.sample(negative_doc_idx_list, num_neg_docs_per_batch * self.gradient_accumulation_steps)
+            for i in range(self.gradient_accumulation_steps):
+                batch = [pos_doc]
+                batch += neg_docs[i * num_neg_docs_per_batch:(i + 1) * num_neg_docs_per_batch]
+                random.shuffle(batch)  # random order of relevant document in batch
+                yield batch
 
     def __len__(self):
-        return self.queries_in_data_source
+        return self.queries_in_data_source * self.gradient_accumulation_steps
 
 
 class LargeLazyClassificationDataset(Dataset):
