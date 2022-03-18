@@ -26,6 +26,17 @@ class TripletLoss(torch.nn.Module):
     def __init__(self, m: float = 0.1) -> None:
         super(TripletLoss, self).__init__()
         self.m: float = m
+        self.last_positive_score = None
+
+    def train(self, mode: bool = True):
+        if self.training != mode:
+            self.last_positive_score = None
+        return super(TripletLoss, self).train(mode)
+
+    def _compute_loss(self, positive_score, negative_scores):
+        loss = negative_scores - positive_score + self.m
+        loss[loss < 0] = 0  # maximum operation: max[loss, 0]
+        return loss
 
     def forward(
             self,
@@ -42,26 +53,53 @@ class TripletLoss(torch.nn.Module):
         else:
             raise ValueError("Invalid input shape, we expect (N,2). Got: {}"
                              .format(input.shape))
-        if torch.sum(target) != 1:
-            raise ValueError(
-                "Invalid target tensor, we expect the target to be one-hot coded. Got: sum over target = {}"
-                .format(torch.sum(target)))
         if not input.device == target.device:
             raise ValueError(
                 "input and target must be in the same device. Got: {}".format(
                     input.device, target.device))
 
+        if self.training and torch.sum(target) != 1:
+            raise ValueError(
+                "Invalid target tensor, we expect the target to be one-hot coded. Got: sum over target = {}"
+                    .format(torch.sum(target)))
+
         # compute sigmoid in order to retrieve score s()
         input = input[:, 1]  # select label for being relevant
         input_score = torch.sigmoid(input)
 
-        # gain positive score and negative score tensor
-        positive_idx = torch.nonzero(target).item()
-        positive_score = input_score[positive_idx]
-        negative_scores = torch.cat([input_score[:positive_idx], input_score[positive_idx + 1:]])
+        if self.training:
+            # gain positive score and negative score tensor
+            positive_idx = torch.nonzero(target).item()
+            positive_score = input_score[positive_idx]
+            negative_scores = torch.cat([input_score[:positive_idx], input_score[positive_idx + 1:]])
 
-        # compute loss
-        loss = positive_score - negative_scores + self.m
-        loss[loss < 0] = 0  # maximum operation: max[loss, 0]
+            # compute loss
+            loss = self._compute_loss(positive_score, negative_scores)
+        else:
+            loss = torch.empty(0).to(input.device)
+            positive_idx_list = torch.nonzero(target).squeeze().tolist()
+            if isinstance(positive_idx_list, int):
+                positive_idx_list = [positive_idx_list]
+            len_positive_idx_list = len(positive_idx_list)
+            len_input_score = len(input_score)
+
+            if 0 not in positive_idx_list:
+                if self.last_positive_score is None:
+                    raise ValueError("last_positive_score is None and the first item is not a relevant one")
+                if positive_idx_list:
+                    negative_scores = input_score[:positive_idx_list[0]]
+                else:
+                    negative_scores = input_score
+                loss = torch.cat((loss, self._compute_loss(self.last_positive_score, negative_scores)))
+            for i, positive_idx in enumerate(positive_idx_list):
+                self.last_positive_score = input_score[positive_idx]
+                if positive_idx == len_input_score - 1:
+                    # there are no negative scores in the batch belonging to this positive score
+                    break
+                if i + 1 < len_positive_idx_list:
+                    negative_scores = input_score[positive_idx + 1:positive_idx_list[i + 1]]
+                else:
+                    negative_scores = input_score[positive_idx + 1:]
+                loss = torch.cat((loss, self._compute_loss(self.last_positive_score, negative_scores)))
 
         return torch.mean(loss)
