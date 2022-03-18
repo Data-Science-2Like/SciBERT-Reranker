@@ -15,4 +15,31 @@ The abstract is not going to be used in the query as we are recommending citatio
 - the abstract might not yet exist.
 - it might be confusing when the recommended citations in the text change only due to some change in the abstract.
 
-The candidate paper is represented by its title and abstract as in the original work.
+The candidate paper is represented by its title and abstract as in the original work. We might experiment with adding the year of publication.
+
+## Installation
+Create a python3.8 environment with all required libraries. Using Anaconda:
+- `conda env create -f environment.yml python=3.8`
+
+Install the simpletransformers library via our github organisation (it only contains slight changes for allowing
+a custom loss function and a custom batch sampler in the ClassificationModel, which is not possible in the official library implementation).
+- `git clone https://github.com/Data-Science-2Like/simpletransformers.git`  
+- `cd simpletransformers` (just to be on the save side that we install custom and not official version)
+- `pip install .`
+
+## Data Format
+We expect the input data to have the same format as in the [simpletransformers library](https://simpletransformers.ai/docs/sentence-pair-classification/) for a sentence-pair classification task,
+i.e. query text followed by document text and label (1 for positive document, 0 for negative document).
+
+Further we expect the data to be in blocks of same queries and that the single positive document for each query is the first entry in such a block.
+We also assume that there is the same amount of entries in the data for each query / block.  
+This allows us to easily iterate over blocks and treat each block as a possible batch, where we take the first entry (the positive document)
+and sample randomly from the other entries in the block (the negative documents) until the aimed batch size is reached.
+
+### Dataset Creation
+Allows to create a dataset with the above described format from the following base data:
+- ACL-200 or ACL-600 respectively as provided in [Improved Local Citation Recommendation Based on Context Enhanced with Global Information](https://aclanthology.org/2020.sdp-1.11/)  
+    &rarr; `create_dataset_from_acl` method
+
+The resulting files are output in the `dataset` directory.  
+There is no commandline interface provided. Please, add the respective method call with its parameters directly in the `run.py` file.
