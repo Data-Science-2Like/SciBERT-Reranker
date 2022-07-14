@@ -100,7 +100,7 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
         writer = csv.writer(dataset, delimiter='\t')
         writer.writerow(["Query", "Document", "Relevant"])
 
-        def write_relevant_and_nonrelevant_papers(relevant_paper_ids):
+        def write_relevant_and_nonrelevant_papers(relevant_paper_ids, query_entry):
             # add entries for relevant papers
             for relevant_id in relevant_paper_ids:
                 query_entry, relevant_document_entry = _get_query_and_document_entry(context, query_entry,
@@ -124,10 +124,10 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
             relevant_ids = context["cited_ids"]
             if len(results) == 1:
                 candidate_paper_ids = results[0]
-                write_relevant_and_nonrelevant_papers(relevant_ids)
+                write_relevant_and_nonrelevant_papers(relevant_ids, query_entry)
             else:
                 for candidate_paper_ids, relevant_id in zip(results, relevant_ids):
-                    write_relevant_and_nonrelevant_papers([relevant_id])
+                    write_relevant_and_nonrelevant_papers([relevant_id], query_entry)
 
 
 def _create_top_candidates_per_query(data, prefetcher, documents_per_query,
@@ -143,9 +143,7 @@ def _create_top_candidates_per_query(data, prefetcher, documents_per_query,
         if i % 100 == 0:
             print(str(i) + "/" + str(query_amount))
         query_text = query_info["citation_context"] + " " + query_info["title"] + " " + query_info["abstract"]
-        if train_context_ids is None:
-            is_training_context = False
-        elif query_id in train_context_ids:
+        if train_context_ids is not None and query_id in train_context_ids:
             is_training_context = True
         else:
             is_training_context = False

@@ -92,8 +92,13 @@ class DataS2ORC(_Data):
         self.val_context_ids = set()
         self.test_context_ids = set()
 
+        if path_to_train_contexts is None and path_to_val_contexts is None and path_to_test_contexts is None:
+            raise ValueError("No path to any contexts was given.")
+
         for context_ids, path_to_contexts in zip([self.train_context_ids, self.val_context_ids, self.test_context_ids],
                                                  [path_to_train_contexts, path_to_val_contexts, path_to_test_contexts]):
+            if path_to_contexts is None:
+                continue
             with open(path_to_contexts, 'r') as contexts_file:
                 for line in contexts_file:
                     entry = json.loads(line)
