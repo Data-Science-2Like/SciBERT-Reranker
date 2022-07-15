@@ -2,7 +2,7 @@ from typing import List
 
 from gensim.summarization.bm25 import BM25
 
-from corpus_and_queries import _Data
+from dataset_creation.corpus_and_queries import _Data
 
 
 class PrefetcherBM25(BM25):

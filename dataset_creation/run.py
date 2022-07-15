@@ -2,8 +2,8 @@ import csv
 
 import joblib
 
-from corpus_and_queries import DataS2ORC, DataACL, _Data
-from prefetcher import PrefetcherBM25
+from dataset_creation.corpus_and_queries import DataS2ORC, DataACL, _Data
+from dataset_creation.prefetcher import PrefetcherBM25
 
 
 def _get_query_entry(context, fields, custom_paragraph=None):
