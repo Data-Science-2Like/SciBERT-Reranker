@@ -35,13 +35,13 @@ class PrefetcherBM25(BM25):
             if is_training:
                 # create a result set for every cited id individually
                 result_ids = [result_ids.copy() for _ in range(len(cited_ids))]
-                for results, cited_id in zip(result_ids, cited_ids):
+                for i, cited_id in zip(range(len(result_ids)), cited_ids):
                     # clear all cited ids
                     for id in cited_ids:
-                        results.remove(id)
-                    results = results[:k]
+                        result_ids[i].remove(id)
+                    result_ids[i] = result_ids[i][:k]
                     # add the cited id for this result set
-                    results[-1] = cited_id
+                    result_ids[i][-1] = cited_id
             else:
                 # include all cited ids in the result
                 result_ids = result_ids[:k]
