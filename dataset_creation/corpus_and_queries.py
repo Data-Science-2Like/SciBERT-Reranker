@@ -1,5 +1,7 @@
 import json
 
+import regex as re
+
 
 class _Data:
     def __init__(self):
@@ -11,6 +13,50 @@ class _Data:
         # citation_context, title, abstract, paragraph, section and
         # year (such that we can check for causality: no candidate papers that were published more recently)
         self.contexts = {}
+        # mapping to common set of section titles (given by structure analysis)
+        # only contains the keys that are in our dataset created from the S2ORC dataset
+        self.section_mapper = {
+            "introduction": "introduction",
+            "overview": "introduction",
+            "motivation": "introduction",
+
+            "related work": "related work",
+            "related works": "related work",
+            "background": "related work",
+            "literature review": "related work",
+
+            "methodology": "method",
+            "method": "method",
+            "methods": "method",
+            "material and methods": "method",
+            "proposed method": "method",
+            "procedure": "method",
+            "implementation": "method",
+            "experimental design": "method",
+            "implementation details": "method",
+
+            "experiments": "experiment",
+            "experimental results": "experiment",
+            "results": "experiment",
+            "evaluation": "experiment",
+            "performance evaluation": "experiment",
+            "experiments and results": "experiment",
+            "analysis": "experiment",
+            "results and analysis": "experiment",
+
+            "discussion": "discussion",
+            "discussions": "discussion",
+            "limitations": "discussion",
+            "results and discussion": "discussion",
+            "results and discussions": "discussion",
+
+            "discussion and conclusion": "conclusion",
+            "discussion and conclusions": "conclusion",
+            "future work": "conclusion",
+            "conclusion": "conclusion",
+            "conclusions": "conclusion",
+            "conclusions and future work": "conclusion"
+        }
 
     @staticmethod
     def load_data_from_json(path_to_json: str) -> dict:
@@ -22,7 +68,9 @@ class _Data:
         corpus = {}
         for paper_id, information in self.papers.items():
             if information["is_candidate_paper"]:
-                corpus[paper_id] = information["title"] + " " + information["abstract"]
+                value = information["title"] + " " + information["abstract"]
+                value = re.sub(" +", " ", value)
+                corpus[paper_id] = value
         return corpus
 
     def get_paper(self, paper_id):
@@ -112,6 +160,6 @@ class DataS2ORC(_Data):
                         "title": paper_info["title"],
                         "abstract": paper_info["abstract"],
                         "year": paper_info["year"],
-                        "paragraph": entry["text"],
-                        "section": entry["section_title"]
+                        "paragraph": entry["text"].replace(entry["citation_context"], "TARGETSENT"),
+                        "section": self.section_mapper[entry["section_title"].lower()]
                     }

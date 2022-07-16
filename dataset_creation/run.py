@@ -30,8 +30,8 @@ def _perform_truncation_preprocessing(query, query_entry, document_entry, query_
         # no truncation preprocessing required, longest-first truncation is sufficient
         return query_entry, document_entry
     # heuristic: one word = one token
-    query_len = len(query_entry.split(" "))
-    document_len = len(document_entry.split(" "))
+    query_len = len(query_entry.split())
+    document_len = len(document_entry.split())
     input_len = query_len + document_len
     max_input_len -= 3  # three special tokens (1x CLS, 2x SEP)
     truncation_len = input_len - max_input_len
@@ -63,13 +63,13 @@ def _perform_truncation_preprocessing(query, query_entry, document_entry, query_
 
         # document / candidate paper -> remove from the end (abstract)
         if doc_trunc_len > 0:
-            document_entry = document_entry.rsplit(" ", doc_trunc_len)[0]
+            document_entry = document_entry.rsplit(maxsplit=doc_trunc_len)[0]
 
         # query / citation context -> remove from the paragraph such text around citation context is preserved
         if query_trunc_len > 0:
             paragraph = query["paragraph"]
             sent_idx = paragraph.find("TARGETSENT")
-            paragraph_len = len(paragraph.split(" "))
+            paragraph_len = len(paragraph.split())
             paragraph_aimed_len_around = paragraph_len - query_trunc_len - 1
             if paragraph_aimed_len_around <= 0:
                 raise Exception("We did not expect that the whole paragraph or even more needs to be truncated.")
