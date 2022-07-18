@@ -122,7 +122,8 @@ class DataACL(_Data):
 
 
 class DataS2ORC(_Data):
-    def __init__(self, path_to_train_contexts, path_to_val_contexts, path_to_test_contexts, path_to_papers):
+    def __init__(self, path_to_train_contexts, path_to_val_contexts, path_to_test_contexts, path_to_papers,
+                 mask_citation_context_in_paragraph=True):
         super(DataS2ORC, self).__init__()
 
         with open(path_to_papers, 'r') as papers_file:
@@ -153,6 +154,9 @@ class DataS2ORC(_Data):
                     context_id = entry["context_id"]
                     context_ids.add(context_id)
                     paper_info = self.papers[entry["paper_id"]]
+                    paragraph = entry["text"]
+                    if mask_citation_context_in_paragraph:
+                        paragraph = paragraph.replace(entry["citation_context"], "TARGETSENT")
                     self.contexts[context_id] = {
                         "citing_id": entry["paper_id"],
                         "cited_ids": entry["ref_ids"],
@@ -160,6 +164,6 @@ class DataS2ORC(_Data):
                         "title": paper_info["title"],
                         "abstract": paper_info["abstract"],
                         "year": paper_info["year"],
-                        "paragraph": entry["text"].replace(entry["citation_context"], "TARGETSENT"),
+                        "paragraph": paragraph,
                         "section": self.section_mapper[entry["section_title"].lower()]
                     }
