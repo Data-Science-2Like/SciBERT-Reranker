@@ -42,6 +42,8 @@ Allows to create a dataset with the above described format from the following ba
     &rarr; `create_dataset_from_acl` method
 - our S2ORC dataset preprocessed (by our [reranker_dataset.py](https://github.com/Data-Science-2Like/dataset-creation/blob/main/reranker/reranker_dataset.py)) for usage with the SciBERT-Reranker  
     &rarr; `create_dataset_from_s2orc` method
+  - usage with predefined prefeteched candidate papers on the section-level, e.g. by a global citation recommender   
+      &rarr; `create_test_dataset_from_s2orc_prefetchedfile` method, the prefetched candidate papers need to be stored in a dictionary of the form {paper_id: {section_type: [candidate_paper_id, ...], section_type: [candidate_paper_id, ...], ...}, paper_id: ..., ...}, i.e. paper_id &rarr; section_type &rarr; list of candidate_paper_ids, which is saved as a joblib file
 
 The resulting files are output in the `dataset` directory.  
-There is no commandline interface provided. Please, add the respective method call with its parameters directly in the `run.py` file.
+There is no commandline interface provided. Please, add the respective method call with its parameters directly in the `dataset_creation/run.py` file (at the bottom).

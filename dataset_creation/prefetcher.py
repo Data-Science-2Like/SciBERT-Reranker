@@ -1,5 +1,6 @@
 from typing import List
 
+import joblib
 from gensim.summarization.bm25 import BM25
 
 from dataset_creation.corpus_and_queries import _Data
@@ -56,5 +57,16 @@ class PrefetcherBM25(BM25):
                 result_ids = [result_ids]
         else:
             result_ids = [result_ids[:k]]
+
+        return result_ids
+
+
+class PrefetchByFile:
+    def __init__(self, file: str):
+        self.candidate_papers_mapping = joblib.load(file)
+
+    def get_top_results(self, citing_id: str, section_title: str):
+        result_ids = self.candidate_papers_mapping[citing_id][section_title]
+        result_ids = [result_ids]
 
         return result_ids
