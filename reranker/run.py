@@ -57,9 +57,9 @@ def train_and_evaluate_SciBERT_Reranker(documents_per_query, train_data=None, va
         # "evaluate_during_training_verbose": False,
         # "evaluate_each_epoch": True,
 
-        "do_lower_case": not use_cased,
-        "max_seq_length": 512,  # maximum length
-        "manual_seed": 0,  # set some value
+        "do_lower_case": not use_cased or use_longformer,
+        "max_seq_length": 4096 if use_longformer else 512,  # maximum length
+        "manual_seed": 1000,  # set some value
 
         "wandb_kwargs": {"mode": "offline"},
         "wandb_project": "SciBERT_Reranker",
@@ -106,7 +106,7 @@ def train_and_evaluate_SciBERT_Reranker(documents_per_query, train_data=None, va
                              DatasetClass=LargeLazyClassificationDataset,
                              prob_mrr=MeanReciprocalRank(documents_per_query),
                              prob_r_at_k=MeanRecallAtK(documents_per_query, k=10),
-                             output_dir=reranker_args["output_dir"] + test_d.split('.')[0] + "/"
+                             output_dir=reranker_args["output_dir"] + (test_d.split('/')[-1]).split('.')[0] + "/"
                              )
 
 
@@ -115,11 +115,11 @@ if __name__ == "__main__":
     parser.add_argument("--documents_per_query", type=int, required=True,
                         help="Amount of documents per query in the data.")
     parser.add_argument("--data", type=str, nargs='+', required=True,
-                        help="Locations of the created data tsv files."
-                             "If test_only, all data will be used for evaluation."
-                             "Otherwise, the first data is for training, the second for validation"
-                             "and all following ones are for testing."
-                             "For the validation entry, you can also write 'None' in order to"
+                        help="Locations of the created data tsv files. "
+                             "If test_only, all data will be used for evaluation. "
+                             "Otherwise, the first data is for training, the second for validation "
+                             "and all following ones are for testing. "
+                             "For the validation entry, you can also write 'None' in order to "
                              "train and test without making use of validation data.")
     parser.add_argument("--test_only", action='store_true', default=False,
                         help="Whether to perform only testing without training the model.")
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_cased", action='store_true', default=False,
                         help="Whether to use cased input with the respective model variant (if available).")
     parser.add_argument("--use_longformer", action='store_true', default=False,
-                        help="Whether to switch from a SciBERT to a Longformer model"
+                        help="Whether to switch from a SciBERT to a Longformer model "
                              "(also needs to be set properly in case of load_model usage).")
     parser.add_argument("--load_model", type=str, default=None,
                         help="Path to the model that should be loaded as a starting point.")

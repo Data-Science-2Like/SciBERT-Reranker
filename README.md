@@ -40,6 +40,8 @@ and sample randomly from the other entries in the block (the negative documents)
 Allows to create a dataset with the above described format from the following base data:
 - ACL-200 or ACL-600 respectively as provided in [Improved Local Citation Recommendation Based on Context Enhanced with Global Information](https://aclanthology.org/2020.sdp-1.11/)  
     &rarr; `create_dataset_from_acl` method
+- our S2ORC dataset preprocessed (by our [reranker_dataset.py](https://github.com/Data-Science-2Like/dataset-creation/blob/main/reranker/reranker_dataset.py)) for usage with the SciBERT-Reranker  
+    &rarr; `create_dataset_from_s2orc` method
 
 The resulting files are output in the `dataset` directory.  
 There is no commandline interface provided. Please, add the respective method call with its parameters directly in the `run.py` file.
