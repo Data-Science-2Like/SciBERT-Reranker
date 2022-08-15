@@ -3,7 +3,7 @@ import csv
 import joblib
 
 from dataset_creation.corpus_and_queries import DataS2ORC, DataACL, _Data
-from dataset_creation.prefetcher import PrefetcherBM25
+from dataset_creation.prefetcher import PrefetcherBM25, PrefetchByFile
 
 
 def _get_query_entry(context, fields, custom_paragraph=None):
@@ -95,7 +95,7 @@ def _get_query_and_document_entry(context, query_entry, paper, query_fields):
     return query_entry, document_entry
 
 
-def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_fields):
+def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_fields, is_oracle_data=True):
     with open(path_to_tsv, 'w', newline='', encoding='utf-8') as dataset:
         writer = csv.writer(dataset, delimiter='\t')
         writer.writerow(["Query", "Document", "Relevant"])
@@ -115,6 +115,13 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
                                                                             query_fields)
                 writer.writerow([query_entry, document_entry, 0])
 
+        def write_papers(relevant_paper_ids, query_entry):
+            for candidate_paper_id in candidate_paper_ids:
+                query_entry, document_entry = _get_query_and_document_entry(context, query_entry,
+                                                                            data.get_paper(candidate_paper_id),
+                                                                            query_fields)
+                writer.writerow([query_entry, document_entry, int(candidate_paper_id in relevant_paper_ids)])
+
         for context_id in context_ids:
             # representation of (non-truncated) citation context
             context = data.get_context(context_id)
@@ -124,10 +131,17 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
             relevant_ids = context["cited_ids"]
             if len(results) == 1:
                 candidate_paper_ids = results[0]
-                write_relevant_and_nonrelevant_papers(relevant_ids, query_entry)
+                if is_oracle_data:
+                    write_relevant_and_nonrelevant_papers(relevant_ids, query_entry)
+                else:
+                    write_papers(relevant_ids, query_entry)
             else:
                 for candidate_paper_ids, relevant_id in zip(results, relevant_ids):
-                    write_relevant_and_nonrelevant_papers([relevant_id], query_entry)
+                    if is_oracle_data:
+                        write_relevant_and_nonrelevant_papers([relevant_id], query_entry)
+                    else:
+                        write_papers([relevant_id], query_entry)
+
 
 
 def _create_top_candidates_per_query(data, prefetcher, documents_per_query,
@@ -206,6 +220,30 @@ def create_dataset_from_s2orc(path_to_train_contexts, path_to_val_contexts, path
     _create_tsv(data, data.test_context_ids, top_candidates_per_query, 'dataset/s2orc_test_dataset.tsv', query_fields)
 
 
+def create_test_dataset_from_s2orc_prefetchedfile(path_to_test_contexts, path_to_papers,
+                                                  path_to_top_candidates_per_section,
+                                                  query_fields=("citation_context", "title", "abstract")):
+    data = DataS2ORC(None, None, path_to_test_contexts, path_to_papers)
+    prefetcher = PrefetchByFile(path_to_top_candidates_per_section)
+    file_name = (path_to_top_candidates_per_section.split('/')[-1]).split('.')[0]
+
+    top_candidates_per_query = {}
+    queries = data.get_contexts()
+    query_amount = len(queries)
+    i = 0
+    for query_id, query_info in queries.items():
+        i += 1
+        if i % 1000 == 0:
+            print(str(i) + "/" + str(query_amount))
+        result = prefetcher.get_top_results(query_info["citing_id"], query_info["section"])
+        top_candidates_per_query[query_id] = result
+    joblib.dump(top_candidates_per_query,
+                'dataset/s2orc_prefetchedfile_' + file_name + '_top_candidates_per_query.joblib')
+
+    _create_tsv(data, data.test_context_ids, top_candidates_per_query,
+                'dataset/s2orc_prefetchedfile_' + file_name + '_test_dataset.tsv', query_fields, is_oracle_data=False)
+
+
 if __name__ == "__main__":
     # todo: uncomment the below call matching your base data and set parameters as wished
 
@@ -218,5 +256,10 @@ if __name__ == "__main__":
     #                           "data_s2orc/test_contexts.jsonl", "data_s2orc/papers.jsonl",
     #                           query_fields=("citation_context", "title", "abstract"),
     #                           use_saved_top_candidates_per_query=False)
+
+    """ S2ORC with prefetched file """
+    # create_test_dataset_from_s2orc_prefetchedfile("data_s2orc/test_contexts.jsonl", "data_s2orc/papers.jsonl",
+    #                                               "data_prefetched/BaselineCountbased_20.joblib",
+    #                                               query_fields=("citation_context", "title", "paragraph"))
 
     pass
