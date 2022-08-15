@@ -19,7 +19,11 @@ class MeanReciprocalRank:
         ranked_labels = _rank_labels(labels_per_query, preds_per_query)
 
         first_relevant_pos = np.argmax(ranked_labels, axis=1) + 1
-        return np.mean(1.0 / first_relevant_pos), np.std(1.0 / first_relevant_pos)
+        reciprocal_rank_per_query = 1.0 / first_relevant_pos
+        no_pos_doc_idx = np.where(~np.any(ranked_labels, axis=1))
+        reciprocal_rank_per_query[no_pos_doc_idx] = 0
+
+        return np.mean(reciprocal_rank_per_query), np.std(reciprocal_rank_per_query)
 
 
 class MeanRecallAtK:
