@@ -143,10 +143,11 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
                         write_papers([relevant_id], query_entry)
 
 
-
 def _create_top_candidates_per_query(data, prefetcher, documents_per_query,
                                      train_context_ids=None, filter_by_year=False,
-                                     out_file='dataset/top_candidates_per_query.joblib'):
+                                     out_file='dataset/top_candidates_per_query.joblib',
+                                     oracle_variant=True,
+                                     query_fields=("citation_context", "title", "abstract")):
     top_candidates_per_query = {}
     queries = data.get_contexts()
     print("querying prefetcher")
@@ -156,14 +157,15 @@ def _create_top_candidates_per_query(data, prefetcher, documents_per_query,
         i += 1
         if i % 100 == 0:
             print(str(i) + "/" + str(query_amount))
-        query_text = query_info["citation_context"] + " " + query_info["title"] + " " + query_info["abstract"]
+        query_text = _get_query_entry(query_info, query_fields)
         if train_context_ids is not None and query_id in train_context_ids:
             is_training_context = True
         else:
             is_training_context = False
         context_year = query_info["year"] if filter_by_year else None
         result = prefetcher.get_k_top_results(query_text, k=documents_per_query,
-                                              citing_id=query_info["citing_id"], cited_ids=query_info["cited_ids"],
+                                              citing_id=query_info["citing_id"],
+                                              cited_ids=query_info["cited_ids"] if oracle_variant else None,
                                               is_training=is_training_context, max_year=context_year)
         top_candidates_per_query[query_id] = result
     joblib.dump(top_candidates_per_query, out_file)
@@ -244,6 +246,34 @@ def create_test_dataset_from_s2orc_prefetchedfile(path_to_test_contexts, path_to
                 'dataset/s2orc_prefetchedfile_' + file_name + '_test_dataset.tsv', query_fields, is_oracle_data=False)
 
 
+def create_test_dataset_from_s2orc_localBM25prefetcher(path_to_test_contexts, path_to_papers,
+                                                       documents_per_query=2000,
+                                                       query_fields=("citation_context", "title", "abstract"),
+                                                       prefetcher_query_fields=(
+                                                       "citation_context", "title", "abstract"),
+                                                       prefetcher_do_mask=True,
+                                                       use_saved_top_candidates_per_query=False):
+    data = DataS2ORC(None, None, path_to_test_contexts, path_to_papers)
+    data_prefetcher = DataS2ORC(None, None, path_to_test_contexts, path_to_papers,
+                                mask_citation_context_in_paragraph=prefetcher_do_mask)
+    if use_saved_top_candidates_per_query:
+        print(
+            "loading top_candidates_per_query from file: dataset/s2orc_localBM25prefetcher_top_candidates_per_query.joblib")
+        top_candidates_per_query = joblib.load('dataset/s2orc_localBM25prefetcher_top_candidates_per_query.joblib')
+    else:
+        prefetcher = PrefetcherBM25(data_prefetcher)
+        top_candidates_per_query = _create_top_candidates_per_query(data_prefetcher, prefetcher, documents_per_query,
+                                                                    train_context_ids=data.train_context_ids,
+                                                                    filter_by_year=True,
+                                                                    out_file='dataset/s2orc_localBM25prefetcher_top_candidates_per_query.joblib',
+                                                                    oracle_variant=False,
+                                                                    query_fields=prefetcher_query_fields
+                                                                    )
+
+    _create_tsv(data, data.test_context_ids, top_candidates_per_query,
+                'dataset/s2orc_localBM25prefetcher_test_dataset.tsv', query_fields, is_oracle_data=False)
+
+
 if __name__ == "__main__":
     # todo: uncomment the below call matching your base data and set parameters as wished
 
@@ -257,9 +287,17 @@ if __name__ == "__main__":
     #                           query_fields=("citation_context", "title", "abstract"),
     #                           use_saved_top_candidates_per_query=False)
 
-    """ S2ORC with prefetched file """
+    """ S2ORC test data with prefetched file """
     # create_test_dataset_from_s2orc_prefetchedfile("data_s2orc/test_contexts.jsonl", "data_s2orc/papers.jsonl",
     #                                               "data_prefetched/BaselineCountbased_20.joblib",
     #                                               query_fields=("citation_context", "title", "paragraph"))
+
+    """ S2ORC test data with non-oracle localBM25 as the prefetcher """
+    # create_test_dataset_from_s2orc_localBM25prefetcher("data_s2orc/test_contexts.jsonl", "data_s2orc/papers.jsonl",
+    #                                                    documents_per_query=2000,
+    #                                                    query_fields=("citation_context", "title", "paragraph"),
+    #                                                    prefetcher_query_fields=("citation_context", "title", "paragraph"),
+    #                                                    prefetcher_do_mask=False,
+    #                                                    use_saved_top_candidates_per_query=False)
 
     pass
