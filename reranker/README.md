@@ -19,6 +19,8 @@ A documented commandline interface is provided. By adding `-h` to the above call
 Moreover, the scripts `reranker.sh` and `reranker_prefetcher+reranker.sh` in the parent directory allow to execute all our experiments (after creating the respective datasets with the help of the `dataset_creation/run.py` file).
 The former performs the evaluation of the SciBERT Reranker on the S2ORC_Reranker dataset with different input variants, while the latter performs the evaluations on the basis of actual prefetcher outputs.
 
+The trained models and the calculated evaluation metrics are saved in the `model/<exp_name>/reranker-<timestamp>/` directory by the [simpletransformers library](https://simpletransformers.ai/).
+
 ## Data Format
 We expect the input data to have the same format as in the [simpletransformers library](https://simpletransformers.ai/docs/sentence-pair-classification/) for a sentence-pair classification task,
 i.e., a query text followed by a document text and a label (1 for positive document, 0 for negative document).

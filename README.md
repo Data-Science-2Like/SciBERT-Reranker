@@ -39,10 +39,22 @@ a custom loss function and a custom batch sampler in the ClassificationModel, wh
 `baseline`: implementation of the Local BM25 baseline   
 (see README in the directory for more details)
 
-`dataset_creation`: further processing of the S2ORC_Reranker dataset as created by our dataset creation in [dataset-creation/reranker/reranker_dataset.py](https://github.com/Data-Science-2Like/dataset-creation/blob/main/reranker/)  
+`dataset_creation`: further processing of the S2ORC_Reranker and ACL-200_Reranker datasets  
 (see README in the directory for more details)
 
 `reranker`: implementation of the SciBERT Reranker  
 (see README in the directory for more details)
 
 `test`: initial tests for verifying our implementation of the triplet loss (&rarr; `test_loss.py`) and the evaluation metrics (&rarr; `test_metrics.py`) for the SciBERT Reranker
+
+## Getting Datasets for Running the Experiments
+In order to run the experiments with the Local BM25 baseline or the SciBERT Reranker proper datasets are required.
+### ACL dataset
+When you want to perform the experiments with the ACL dataset as provided in
+[Improved Local Citation Recommendation Based on Context Enhanced with Global Information](https://aclanthology.org/2020.sdp-1.11/),
+you need to download the dataset and execute the `dataset_creation/run.py` file with the respective method call and parameters.
+### Modified S2ORC dataset
+In order to perform the experiments with the Modified S2ORC dataset, a sequence of preprocessing steps is required:
+1. Download the S2ORC dataset and create the Modified S2ORC dataset as described in our [dataset-creation repository](https://github.com/Data-Science-2Like/dataset-creation).
+2. Create an initial version of the S2ORC_Reranker dataset as described in [dataset-creation/reranker/](https://github.com/Data-Science-2Like/dataset-creation/blob/main/reranker/) using the Modified S2ORC dataset as a basis.
+3. With this version of the S2ORC_Reranker dataset, execute the `dataset_creation/run.py` file with the respective method call and parameters.

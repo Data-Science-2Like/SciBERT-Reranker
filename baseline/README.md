@@ -13,3 +13,5 @@ A documented commandline interface is provided. By adding `-h` to the above call
 
 Moreover, the scripts `baseline.sh` and `baseline_prefetcher+reranker.sh` in the parent directory allow to execute all our experiments (after creating the respective datasets with the help of the `dataset_creation/run.py` file).
 The former performs the evaluation of the Local BM25 baseline on the S2ORC_Reranker dataset with different input variants, while the latter performs the evaluations on the basis of actual prefetcher outputs.
+
+The calculated evaluation metrics are saved in the parent directory in the `model/BM25Baseline/<exp_name>.txt` file.
