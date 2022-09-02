@@ -24,22 +24,22 @@ class MyTestCase(unittest.TestCase):
                             [0, 0.1], [0, 0.3], [0, 0.5], [0, 1.0], [0, 0.2]])
 
         recall_7 = MeanRecallAtK(5, 7)
-        result = recall_7(labels, preds)
+        result = recall_7(labels, preds)[0]
         self.assertEqual(result, 1)
         recall_5 = MeanRecallAtK(5, 5)
-        result = recall_5(labels, preds)
+        result = recall_5(labels, preds)[0]
         self.assertEqual(result, 1)
         recall_4 = MeanRecallAtK(5, 4)
-        result_4 = recall_4(labels, preds)
+        result_4 = recall_4(labels, preds)[0]
         self.assertEqual(result_4, 2 / 3)
         recall_3 = MeanRecallAtK(5, 3)
-        result_3 = recall_3(labels, preds)
+        result_3 = recall_3(labels, preds)[0]
         self.assertEqual(result_3, 2 / 3)
         recall_2 = MeanRecallAtK(5, 2)
-        result_2 = recall_2(labels, preds)
+        result_2 = recall_2(labels, preds)[0]
         self.assertEqual(result_2, 1 / 3)
         recall_1 = MeanRecallAtK(5, 1)
-        result_1 = recall_1(labels, preds)
+        result_1 = recall_1(labels, preds)[0]
         self.assertEqual(result_1, 0)
 
     def test_mean_reciprocal_rank(self):
@@ -49,7 +49,7 @@ class MyTestCase(unittest.TestCase):
                             [0, 0.1], [0, 0.3], [0, 0.5], [0, 1.0], [0, 0.2]])
 
         mrr = MeanReciprocalRank(5)
-        result = mrr(labels, preds)
+        result = mrr(labels, preds)[0]
         self.assertEqual(result, 1 / 3 * (1 / 2 + 1 / 3 + 1 / 5))
 
 
