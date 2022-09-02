@@ -19,13 +19,19 @@ class MeanReciprocalRank:
         ranked_labels = _rank_labels(labels_per_query, preds_per_query)
 
         first_relevant_pos = np.argmax(ranked_labels, axis=1) + 1
-        return np.mean(1.0 / first_relevant_pos), np.std(1.0 / first_relevant_pos)
+        reciprocal_rank_per_query = 1.0 / first_relevant_pos
+        no_pos_doc_idx = np.where(~np.any(ranked_labels, axis=1))
+        reciprocal_rank_per_query[no_pos_doc_idx] = 0
+
+        return np.mean(reciprocal_rank_per_query), np.std(reciprocal_rank_per_query)
 
 
 class MeanRecallAtK:
-    def __init__(self, batch_size, k):
+    def __init__(self, batch_size, k, amount_cited_papers_per_query=None):
         self.batch_size = batch_size
         self.k = k
+        self.amount_cited_papers_per_query = amount_cited_papers_per_query
+        self.count = 0
 
     def __call__(self, labels, preds):
         r"""Method that computes the recall at k metric (for our use case).
@@ -38,7 +44,12 @@ class MeanRecallAtK:
         ranked_labels = _rank_labels(labels_per_query, preds_per_query)
 
         ranked_labels_cutoff = ranked_labels[:, :self.k]
-        recall_at_k_per_query = np.sum(ranked_labels_cutoff, axis=1) / np.sum(labels_per_query, axis=1)
+        if self.amount_cited_papers_per_query is not None:
+            prev_count = self.count
+            self.count += ranked_labels_cutoff.shape[0]
+            recall_at_k_per_query = np.sum(ranked_labels_cutoff, axis=1) / self.amount_cited_papers_per_query[prev_count:self.count]
+        else:
+            recall_at_k_per_query = np.sum(ranked_labels_cutoff, axis=1) / np.sum(labels_per_query, axis=1)
         return np.mean(recall_at_k_per_query), np.std(recall_at_k_per_query)
 
 

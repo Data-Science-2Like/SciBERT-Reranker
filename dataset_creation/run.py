@@ -100,6 +100,8 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
         writer = csv.writer(dataset, delimiter='\t')
         writer.writerow(["Query", "Document", "Relevant"])
 
+        amount_cited_papers = []
+
         def write_relevant_and_nonrelevant_papers(relevant_paper_ids, query_entry):
             # add entries for relevant papers
             for relevant_id in relevant_paper_ids:
@@ -121,6 +123,7 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
                                                                             data.get_paper(candidate_paper_id),
                                                                             query_fields)
                 writer.writerow([query_entry, document_entry, int(candidate_paper_id in relevant_paper_ids)])
+            amount_cited_papers.append(len(relevant_paper_ids))
 
         for context_id in context_ids:
             # representation of (non-truncated) citation context
@@ -141,6 +144,9 @@ def _create_tsv(data, context_ids, top_candidates_per_query, path_to_tsv, query_
                         write_relevant_and_nonrelevant_papers([relevant_id], query_entry)
                     else:
                         write_papers([relevant_id], query_entry)
+
+        if not is_oracle_data:
+            joblib.dump(amount_cited_papers, path_to_tsv.split('.')[0] + '_amount-cited-papers.joblib')
 
 
 

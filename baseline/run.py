@@ -8,7 +8,7 @@ from metrics import MeanReciprocalRank, MeanRecallAtK
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--paper", type=str, required=True,
-                        help="Locations of the papers file.")
+                        help="Location of the papers file.")
     parser.add_argument("--contexts", type=str, required=True,
                         help="Locations of the respective contexts file.")
     parser.add_argument("--candidates_per_context", type=str, required=True,

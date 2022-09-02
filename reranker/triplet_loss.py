@@ -23,10 +23,11 @@ class TripletLoss(torch.nn.Module):
         - Target: :math:`(N,)` where all values are zero despite the one for the positive document :math:`d_+` (one-hot coded)
     """
 
-    def __init__(self, m: float = 0.1) -> None:
+    def __init__(self, m: float = 0.1, do_not_calculate_for_testing: bool = False) -> None:
         super(TripletLoss, self).__init__()
         self.m: float = m
         self.last_positive_score = None
+        self.do_not_calculate_for_testing = do_not_calculate_for_testing
 
     def train(self, mode: bool = True):
         if self.training != mode:
@@ -75,6 +76,8 @@ class TripletLoss(torch.nn.Module):
 
             # compute loss
             loss = self._compute_loss(positive_score, negative_scores)
+        elif self.do_not_calculate_for_testing:
+            return torch.tensor(float('nan')).to(input.device)
         else:
             loss = torch.empty(0).to(input.device)
             positive_idx_list = torch.nonzero(target).squeeze().tolist()

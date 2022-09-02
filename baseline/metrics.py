@@ -25,7 +25,10 @@ class MeanReciprocalRank(Metric):
     def __call__(self, ranked_ids, cited_ids):
         ranked_labels = self.create_ranked_labels(ranked_ids, cited_ids)
         first_relevant_pos = np.argmax(ranked_labels, axis=1) + 1
-        return np.mean(1.0 / first_relevant_pos), np.std(1.0 / first_relevant_pos)
+        reciprocal_rank_per_query = 1.0 / first_relevant_pos
+        no_cited_in_ranked_idx = np.where(~np.any(ranked_labels, axis=1))
+        reciprocal_rank_per_query[no_cited_in_ranked_idx] = 0
+        return np.mean(reciprocal_rank_per_query), np.std(reciprocal_rank_per_query)
 
 
 class MeanRecallAtK(Metric):
@@ -37,8 +40,5 @@ class MeanRecallAtK(Metric):
         ranked_labels = self.create_ranked_labels(ranked_ids, cited_ids)
         ranked_labels_cutoff = ranked_labels[:, :self.k]
         labels_per_query = [len(sample) for sample in cited_ids]
-        # labels_per_query = np.asarray([len(sample) for sample in cited_ids], dtype=float)
-        # labels_per_query = np.reshape(labels_per_query, (-1, 1))
-        np.sum(ranked_labels_cutoff, axis=1)
         recall_at_k_per_query = np.sum(ranked_labels_cutoff, axis=1) / labels_per_query
         return np.mean(recall_at_k_per_query), np.std(recall_at_k_per_query)

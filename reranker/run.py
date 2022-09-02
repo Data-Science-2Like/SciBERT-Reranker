@@ -1,6 +1,7 @@
 import argparse
 import time
 
+import joblib
 from simpletransformers.classification import ClassificationModel
 
 from data_loading import CitationBatchSampler, LargeLazyClassificationDataset
@@ -8,7 +9,8 @@ from metrics import MeanReciprocalRank, MeanRecallAtK
 from triplet_loss import TripletLoss
 
 
-def train_and_evaluate_SciBERT_Reranker(documents_per_query, train_data=None, val_data=None, test_data=None,
+def train_and_evaluate_SciBERT_Reranker(documents_per_query, train_data=None, val_data=None,
+                                        test_data=None, amount_cited_papers=None,
                                         exp_name: str = 'unknown_experiment',
                                         use_cased=False, use_longformer=False,
                                         load_model=None):
@@ -19,6 +21,10 @@ def train_and_evaluate_SciBERT_Reranker(documents_per_query, train_data=None, va
         train_data: train data tsv file with columns 'Query', 'Document', 'Relevant'
         val_data: validation data tsv file with columns 'Query', 'Document', 'Relevant'
         test_data: list of test data with tsv file columns 'Query', 'Document', 'Relevant'
+        amount_cited_papers: set in case any of the test data does not contain all cited papers
+                                        in the order of the test data list
+                                        - if test data contains all cited papers: None
+                                        - else: in the order of the queries/citation_contexts the respective amount of cited papers
         exp_name: name of the experiment to be included in the output directory
         use_cased: whether to use cased or uncased input with the respective model if available
         use_longformer: use the Longformer model instead of the SciBERT model
@@ -77,16 +83,19 @@ def train_and_evaluate_SciBERT_Reranker(documents_per_query, train_data=None, va
     # create SciBERT classifier
     if load_model:
         model_name = 'longformer' if use_longformer else 'bert'
-        model = ClassificationModel(model_name, load_model, args=reranker_args, loss_fct=TripletLoss(m=0.1))
+        model = ClassificationModel(model_name, load_model, args=reranker_args, loss_fct=TripletLoss(m=0.1,
+                                                                                 do_not_calculate_for_testing=amount_cited_papers is not None))
     else:
         if use_longformer:
             model = ClassificationModel('longformer',
                                         'allenai/longformer-base-4096',
-                                        args=reranker_args, loss_fct=TripletLoss(m=0.1))
+                                        args=reranker_args, loss_fct=TripletLoss(m=0.1,
+                                                                                 do_not_calculate_for_testing=amount_cited_papers is not None))
         else:
             model = ClassificationModel('bert',
                                         'allenai/scibert_scivocab_cased' if use_cased else 'allenai/scibert_scivocab_uncased',
-                                        args=reranker_args, loss_fct=TripletLoss(m=0.1))
+                                        args=reranker_args, loss_fct=TripletLoss(m=0.1,
+                                                                                 do_not_calculate_for_testing=amount_cited_papers is not None))
 
     # train model
     if train_data is not None:
@@ -100,12 +109,15 @@ def train_and_evaluate_SciBERT_Reranker(documents_per_query, train_data=None, va
                           prob_r_at_k=MeanRecallAtK(documents_per_query, k=10)
                           )
     if test_data is not None:
-        for test_d in test_data:
+        if amount_cited_papers is None:
+            amount_cited_papers = len(test_data) * [None]
+        for test_d, amount_cited_papers_per_query in zip(test_data, amount_cited_papers):
             # evaluate model
             model.eval_model(test_d,
                              DatasetClass=LargeLazyClassificationDataset,
                              prob_mrr=MeanReciprocalRank(documents_per_query),
-                             prob_r_at_k=MeanRecallAtK(documents_per_query, k=10),
+                             prob_r_at_k=MeanRecallAtK(documents_per_query, k=10,
+                                                       amount_cited_papers_per_query=amount_cited_papers_per_query),
                              output_dir=reranker_args["output_dir"] + (test_d.split('/')[-1]).split('.')[0] + "/"
                              )
 
@@ -116,13 +128,17 @@ if __name__ == "__main__":
                         help="Amount of documents per query in the data.")
     parser.add_argument("--data", type=str, nargs='+', required=True,
                         help="Locations of the created data tsv files. "
-                             "If test_only, all data will be used for evaluation. "
+                             "If test_only, all data will be used for testing. "
                              "Otherwise, the first data is for training, the second for validation "
                              "and all following ones are for testing. "
                              "For the validation entry, you can also write 'None' in order to "
                              "train and test without making use of validation data.")
     parser.add_argument("--test_only", action='store_true', default=False,
                         help="Whether to perform only testing without training the model.")
+    parser.add_argument("--non_oracle", type=str, nargs='+', default=None,
+                        help="Set when any of the testing data does not contain all cited papers: "
+                             "For each testing data named in --data, "
+                             "the respective location of the amount-cited-papers file or None.")
     parser.add_argument("--exp_name", type=str, default='unknown_experiment',
                         help="Name of the experiment (used in output directory).")
     parser.add_argument("--use_cased", action='store_true', default=False,
@@ -134,17 +150,14 @@ if __name__ == "__main__":
                         help="Path to the model that should be loaded as a starting point.")
     args = parser.parse_args()
 
-    # train and evaluate model
+    # extract training, validation and testing data
+    training_data = None
+    validation_data = None
+    testing_data = None
     if args.test_only:
-        train_and_evaluate_SciBERT_Reranker(documents_per_query=args.documents_per_query,
-                                            test_data=args.data,
-                                            exp_name=args.exp_name,
-                                            use_cased=args.use_cased, use_longformer=args.use_longformer,
-                                            load_model=args.load_model)
+        testing_data = args.data
     else:
         training_data = args.data[0]
-        validation_data = None
-        testing_data = None
         data_len = len(args.data)
         if data_len > 1:
             validation_data = args.data[1]
@@ -152,9 +165,17 @@ if __name__ == "__main__":
                 validation_data = None
         if data_len > 2:
             testing_data = args.data[2:]
-        train_and_evaluate_SciBERT_Reranker(documents_per_query=args.documents_per_query,
-                                            train_data=training_data, val_data=validation_data,
-                                            test_data=testing_data,
-                                            exp_name=args.exp_name,
-                                            use_cased=args.use_cased, use_longformer=args.use_longformer,
-                                            load_model=args.load_model)
+
+    # extract amount cited papers per query
+    if args.non_oracle is not None:
+        for i, x in enumerate(args.non_oracle):
+            if x is not None:
+                args.non_oracle[i] = joblib.load(x)
+
+    # train and evaluate model
+    train_and_evaluate_SciBERT_Reranker(documents_per_query=args.documents_per_query,
+                                        train_data=training_data, val_data=validation_data, test_data=testing_data,
+                                        amount_cited_papers=args.non_oracle,
+                                        exp_name=args.exp_name,
+                                        use_cased=args.use_cased, use_longformer=args.use_longformer,
+                                        load_model=args.load_model)
