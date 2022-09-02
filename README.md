@@ -1,25 +1,33 @@
-# SciBERT Reranker
-This repository implements the SciBERT Reranker as presented by
+# SciBERT Reranker and Local BM25 baseline
+This repository implements the LocalBM25 baseline and the SciBERT Reranker as presented by
 ```
-@misc{gu2021local,
-      title={Local Citation Recommendation with Hierarchical-Attention Text Encoder and SciBERT-based Reranking}, 
-      author={Nianlong Gu and Yingqiang Gao and Richard H. R. Hahnloser},
-      year={2021},
-      eprint={2112.01206},
-      archivePrefix={arXiv},
-      primaryClass={cs.IR}
+@inproceedings{10.1007/978-3-030-99736-6_19,
+    title     = {Local Citation Recommendation with Hierarchical-Attention Text Encoder and SciBERT-Based Reranking},
+    author    = {Nianlong Gu and Yingqiang Gao and Richard H. R. Hahnloser},
+    year      = {2022},
+    booktitle = {Advances in Information Retrieval - 44th European Conference on IR Research, ECIR 2022},
+    editor    = {Matthias Hagen and Suzan Verberne and Craig Macdonald and Christin Seifert and Krisztian Balog and Kjetil Nørvåg and Vinay Setty},
+    series    = {Lecture Notes in Computer Science},
+    volume    = {13185},
+    pages     = {274--288},
+    publisher = {Springer},
+    url       = {https://doi.org/10.1007/978-3-030-99736-6_19},
+    doi       = {10.1007/978-3-030-99736-6_19}
 }
 ```
-We experiment with different information (paragraph around the cite-worthy sentence, section of the cite-worthy sentence) in the query text.
-The abstract is not going to be used in the query as we are recommending citations for a work in progress scientific writing, i.e.
-- the abstract might not yet exist.
-- it might be confusing when the recommended citations in the text change only due to some change in the abstract.
 
-The candidate paper is represented by its title and abstract as in the original work. We might experiment with adding the year of publication.
+We experiment with different information in the query text, i.e., the additional information utilized for representing the citation context: abstract of the citing paper, title of the citing paper, paragraph around the cite-worthy sentence, section of the cite-worthy sentence 
+Ideally, we do not use the abstract and the title in the representation as we are recommending citations for a work-in-progress scientific writing. In this case,
+- the abstract and title might not exist yet and
+- it might be confusing when the recommended citations in the text change only due to some changes in the abstract or the title.
+
+The candidate paper is represented by its title and abstract as in the original work. When the section of the cite-worthy sentence is utilized, we additionally add the year of publication of the candidate paper to its representation.
+
+For more details on the representations, we refer to Section 3.4 of our scientific report.
 
 ## Installation
 Create a python3.8 environment with all required libraries. Using Anaconda:
-- `conda env create -f environment.yml python=3.8`
+`conda env create -f environment.yml python=3.8`
 
 Install the simpletransformers library via our github organisation (it only contains slight changes for allowing
 a custom loss function and a custom batch sampler in the ClassificationModel, which is not possible in the official library implementation).
@@ -27,29 +35,14 @@ a custom loss function and a custom batch sampler in the ClassificationModel, wh
 - `cd simpletransformers` (just to be on the save side that we install custom and not official version)
 - `pip install .`
 
-## Data Format
-We expect the input data to have the same format as in the [simpletransformers library](https://simpletransformers.ai/docs/sentence-pair-classification/) for a sentence-pair classification task,
-i.e. query text followed by document text and label (1 for positive document, 0 for negative document).
+## Structure of the Repository
+`baseline`: implementation of the Local BM25 baseline   
+(see README in the directory for more details)
 
-Further we expect the data to be in blocks of same queries and that the single positive document for each query is the first entry in such a block.
-We also assume that there is the same amount of entries in the data for each query / block.  
-This allows us to easily iterate over blocks and treat each block as a possible batch, where we take the first entry (the positive document)
-and sample randomly from the other entries in the block (the negative documents) until the aimed batch size is reached.
+`dataset_creation`: further processing of the S2ORC_Reranker dataset as created by our dataset creation in [dataset-creation/reranker/reranker_dataset.py](https://github.com/Data-Science-2Like/dataset-creation/blob/main/reranker/)  
+(see README in the directory for more details)
 
-### Dataset Creation
-Allows to create a dataset with the above described format from the following base data:
-- ACL-200 or ACL-600 respectively as provided in [Improved Local Citation Recommendation Based on Context Enhanced with Global Information](https://aclanthology.org/2020.sdp-1.11/)  
-    &rarr; `create_dataset_from_acl` method
-- our S2ORC dataset preprocessed (by our [reranker_dataset.py](https://github.com/Data-Science-2Like/dataset-creation/blob/main/reranker/reranker_dataset.py)) for usage with the SciBERT-Reranker  
-    &rarr; `create_dataset_from_s2orc` method
-  - test data with predefined prefeteched candidate papers on the section-level, e.g. by a global citation recommender   
-      &rarr; `create_test_dataset_from_s2orc_prefetchedfile` method, the prefetched candidate papers need to be stored in a dictionary of the form {paper_id: {section_type: [candidate_paper_id, ...], section_type: [candidate_paper_id, ...], ...}, paper_id: ..., ...}, i.e. paper_id &rarr; section_type &rarr; list of candidate_paper_ids, which is saved as a joblib file
-  - test data with localBM25 as the prefetcher   
-      &rarr; `create_test_dataset_from_s2orc_localBM25prefetcher` method
+`reranker`: implementation of the SciBERT Reranker  
+(see README in the directory for more details)
 
-The resulting files are output in the `dataset` directory.  
-There is no commandline interface provided. Please, add the respective method call with its parameters directly in the `dataset_creation/run.py` file (at the bottom).
-
-## Running the Reranker
-The SciBERT Reranker can be run via `python reranker/run.py`, the LocalBM25 baseline can be run via `python baseline/run.py`.  
-For both rerankers a documented commandline interface is provided (add `-h` to the above calls), i.e. the respective arguments need to be added to the above calls. 
+`test`: initial tests for verifying our implementation of the triplet loss (&rarr; `test_loss.py`) and the evaluation metrics (&rarr; `test_metrics.py`) for the SciBERT Reranker
