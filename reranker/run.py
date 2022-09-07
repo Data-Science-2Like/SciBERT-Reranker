@@ -3,8 +3,9 @@ import time
 
 import joblib
 from simpletransformers.classification import ClassificationModel
+from simpletransformers.classification.classification_utils import LargeLazyClassificationDataset
 
-from data_loading import CitationBatchSampler, LargeLazyClassificationDataset
+from data_loading import CitationBatchSampler
 from metrics import MeanReciprocalRank, MeanRecallAtK
 from triplet_loss import TripletLoss
 
@@ -84,7 +85,7 @@ def train_and_evaluate_SciBERT_Reranker(documents_per_query, train_data=None, va
     if load_model:
         model_name = 'longformer' if use_longformer else 'bert'
         model = ClassificationModel(model_name, load_model, args=reranker_args, loss_fct=TripletLoss(m=0.1,
-                                                                                 do_not_calculate_for_testing=amount_cited_papers is not None))
+                                                                                                     do_not_calculate_for_testing=amount_cited_papers is not None))
     else:
         if use_longformer:
             model = ClassificationModel('longformer',
