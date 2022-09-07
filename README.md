@@ -29,8 +29,8 @@ For more details on the representations, we refer to Section 3.4 of our scientif
 Create a python3.8 environment with all required libraries. Using Anaconda:
 `conda env create -f environment.yml python=3.8`
 
-Install the simpletransformers library via our github organisation (it only contains slight changes for allowing
-a custom loss function and a custom batch sampler in the ClassificationModel, which is not possible in the official library implementation).
+Install the simpletransformers library via our github organisation (it only contains slight changes for loading large classification datasets in a lazy manner
+and allowing a custom loss function and a custom batch sampler in the ClassificationModel, which is not possible in the official library implementation).
 - `git clone https://github.com/Data-Science-2Like/simpletransformers.git`  
 - `cd simpletransformers` (just to be on the save side that we install custom and not official version)
 - `pip install .`
