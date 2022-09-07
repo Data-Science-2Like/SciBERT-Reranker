@@ -1,4 +1,5 @@
 #!/bin/bash
+cd ..
 
 python reranker/run.py --documents_per_query 2000 --data dataset/s2orc_default/s2orc_train_dataset.tsv None dataset/s2orc_default/s2orc_test_dataset.tsv --exp_name S2ORC-default
 python reranker/run.py --documents_per_query 2000 --data dataset/s2orc_paragraph/s2orc_train_dataset.tsv None dataset/s2orc_paragraph/s2orc_test_dataset.tsv --exp_name S2ORC-paragraph

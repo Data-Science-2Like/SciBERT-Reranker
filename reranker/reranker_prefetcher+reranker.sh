@@ -1,4 +1,5 @@
 #!/bin/bash
+cd ..
 
 python reranker/run.py --test_only --load_model /media/nvme2n1/project_struct_cite/models/scibert-reranker-paragraph-seed1000 --documents_per_query 2000 --data dataset/s2orc_prefetchedfile_BaselineCountbased_20_test_dataset.tsv dataset/s2orc_prefetchedfile_BaselineCountbased_50_test_dataset.tsv dataset/s2orc_prefetchedfile_BaselineCountbased_80_test_dataset.tsv --non_oracle dataset/s2orc_prefetchedfile_BaselineCountbased_20_test_dataset_amount-cited-papers.joblib dataset/s2orc_prefetchedfile_BaselineCountbased_50_test_dataset_amount-cited-papers.joblib dataset/s2orc_prefetchedfile_BaselineCountbased_80_test_dataset_amount-cited-papers.joblib --exp_name Prefetcher-BaselineCountbased
 python reranker/run.py --test_only --load_model /media/nvme2n1/project_struct_cite/models/scibert-reranker-paragraph-seed1000 --documents_per_query 2000 --data dataset/s2orc_prefetchedfile_BaselineMostpopular_test_dataset.tsv --non_oracle dataset/s2orc_prefetchedfile_BaselineMostpopular_test_dataset_amount-cited-papers.joblib --exp_name Prefetcher-BaselineMostpopular
